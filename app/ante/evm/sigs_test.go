@@ -8,19 +8,28 @@ import (
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
-func (suite AnteTestSuite) TestSignatures() {
+func (suite *AnteTestSuite) TestSignatures() {
 	suite.enableFeemarket = false
 	suite.SetupTest() // reset
 
-	addr, privKey := tests.NewAddrKey()
-	to := tests.GenerateAddress()
+	addr, privKey := utiltx.NewAddrKey()
+	to := utiltx.GenerateAddress()
 
 	acc := statedb.NewEmptyAccount()
 	acc.Nonce = 1
 	acc.Balance = big.NewInt(10000000000)
 
-	suite.app.EvmKeeper.SetAccount(suite.ctx, addr, *acc)
-	msgEthereumTx := evmtypes.NewTx(suite.app.EvmKeeper.ChainID(), 1, &to, big.NewInt(10), 100000, big.NewInt(1), nil, nil, nil, nil)
+	err := suite.app.EvmKeeper.SetAccount(suite.ctx, addr, *acc)
+	suite.Require().NoError(err)
+	ethTxParams := &evmtypes.EvmTxArgs{
+		ChainID:  suite.app.EvmKeeper.ChainID(),
+		Nonce:    1,
+		To:       &to,
+		Amount:   big.NewInt(10),
+		GasLimit: 100000,
+		GasPrice: big.NewInt(1),
+	}
+	msgEthereumTx := evmtypes.NewTx(ethTxParams)
 	msgEthereumTx.From = addr.Hex()
 
 	// CreateTestTx will sign the msgEthereumTx but not sign the cosmos tx since we have signCosmosTx as false

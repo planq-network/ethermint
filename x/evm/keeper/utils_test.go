@@ -1,494 +1,197 @@
 package keeper_test
 
 import (
+	"encoding/json"
 	"math/big"
+	"time"
 
-	sdkmath "cosmossdk.io/math"
+	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	ethparams "github.com/ethereum/go-ethereum/params"
-	evmkeeper "github.com/evmos/ethermint/x/evm/keeper"
-	evmtypes "github.com/evmos/ethermint/x/evm/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/evmos/evmos/v11/server/config"
+	"github.com/evmos/evmos/v11/testutil"
+	"github.com/evmos/evmos/v11/x/evm/statedb"
+	evmtypes "github.com/evmos/evmos/v11/x/evm/types"
+	"github.com/stretchr/testify/require"
 )
 
-func (suite *KeeperTestSuite) TestCheckSenderBalance() {
-	hundredInt := sdkmath.NewInt(100)
-	zeroInt := sdk.ZeroInt()
-	oneInt := sdk.OneInt()
-	fiveInt := sdkmath.NewInt(5)
-	fiftyInt := sdkmath.NewInt(50)
-	negInt := sdkmath.NewInt(-10)
-
-	testCases := []struct {
-		name            string
-		to              string
-		gasLimit        uint64
-		gasPrice        *sdkmath.Int
-		gasFeeCap       *big.Int
-		gasTipCap       *big.Int
-		cost            *sdkmath.Int
-		from            string
-		accessList      *ethtypes.AccessList
-		expectPass      bool
-		enableFeemarket bool
-	}{
-		{
-			name:       "Enough balance",
-			to:         suite.address.String(),
-			gasLimit:   10,
-			gasPrice:   &oneInt,
-			cost:       &oneInt,
-			from:       suite.address.String(),
-			accessList: &ethtypes.AccessList{},
-			expectPass: true,
-		},
-		{
-			name:       "Equal balance",
-			to:         suite.address.String(),
-			gasLimit:   99,
-			gasPrice:   &oneInt,
-			cost:       &oneInt,
-			from:       suite.address.String(),
-			accessList: &ethtypes.AccessList{},
-			expectPass: true,
-		},
-		{
-			name:       "negative cost",
-			to:         suite.address.String(),
-			gasLimit:   1,
-			gasPrice:   &oneInt,
-			cost:       &negInt,
-			from:       suite.address.String(),
-			accessList: &ethtypes.AccessList{},
-			expectPass: false,
-		},
-		{
-			name:       "Higher gas limit, not enough balance",
-			to:         suite.address.String(),
-			gasLimit:   100,
-			gasPrice:   &oneInt,
-			cost:       &oneInt,
-			from:       suite.address.String(),
-			accessList: &ethtypes.AccessList{},
-			expectPass: false,
-		},
-		{
-			name:       "Higher gas price, enough balance",
-			to:         suite.address.String(),
-			gasLimit:   10,
-			gasPrice:   &fiveInt,
-			cost:       &oneInt,
-			from:       suite.address.String(),
-			accessList: &ethtypes.AccessList{},
-			expectPass: true,
-		},
-		{
-			name:       "Higher gas price, not enough balance",
-			to:         suite.address.String(),
-			gasLimit:   20,
-			gasPrice:   &fiveInt,
-			cost:       &oneInt,
-			from:       suite.address.String(),
-			accessList: &ethtypes.AccessList{},
-			expectPass: false,
-		},
-		{
-			name:       "Higher cost, enough balance",
-			to:         suite.address.String(),
-			gasLimit:   10,
-			gasPrice:   &fiveInt,
-			cost:       &fiftyInt,
-			from:       suite.address.String(),
-			accessList: &ethtypes.AccessList{},
-			expectPass: true,
-		},
-		{
-			name:       "Higher cost, not enough balance",
-			to:         suite.address.String(),
-			gasLimit:   10,
-			gasPrice:   &fiveInt,
-			cost:       &hundredInt,
-			from:       suite.address.String(),
-			accessList: &ethtypes.AccessList{},
-			expectPass: false,
-		},
-		{
-			name:            "Enough balance w/ enableFeemarket",
-			to:              suite.address.String(),
-			gasLimit:        10,
-			gasFeeCap:       big.NewInt(1),
-			cost:            &oneInt,
-			from:            suite.address.String(),
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      true,
-			enableFeemarket: true,
-		},
-		{
-			name:            "Equal balance w/ enableFeemarket",
-			to:              suite.address.String(),
-			gasLimit:        99,
-			gasFeeCap:       big.NewInt(1),
-			cost:            &oneInt,
-			from:            suite.address.String(),
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      true,
-			enableFeemarket: true,
-		},
-		{
-			name:            "negative cost w/ enableFeemarket",
-			to:              suite.address.String(),
-			gasLimit:        1,
-			gasFeeCap:       big.NewInt(1),
-			cost:            &negInt,
-			from:            suite.address.String(),
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      false,
-			enableFeemarket: true,
-		},
-		{
-			name:            "Higher gas limit, not enough balance w/ enableFeemarket",
-			to:              suite.address.String(),
-			gasLimit:        100,
-			gasFeeCap:       big.NewInt(1),
-			cost:            &oneInt,
-			from:            suite.address.String(),
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      false,
-			enableFeemarket: true,
-		},
-		{
-			name:            "Higher gas price, enough balance w/ enableFeemarket",
-			to:              suite.address.String(),
-			gasLimit:        10,
-			gasFeeCap:       big.NewInt(5),
-			cost:            &oneInt,
-			from:            suite.address.String(),
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      true,
-			enableFeemarket: true,
-		},
-		{
-			name:            "Higher gas price, not enough balance w/ enableFeemarket",
-			to:              suite.address.String(),
-			gasLimit:        20,
-			gasFeeCap:       big.NewInt(5),
-			cost:            &oneInt,
-			from:            suite.address.String(),
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      false,
-			enableFeemarket: true,
-		},
-		{
-			name:            "Higher cost, enough balance w/ enableFeemarket",
-			to:              suite.address.String(),
-			gasLimit:        10,
-			gasFeeCap:       big.NewInt(5),
-			cost:            &fiftyInt,
-			from:            suite.address.String(),
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      true,
-			enableFeemarket: true,
-		},
-		{
-			name:            "Higher cost, not enough balance w/ enableFeemarket",
-			to:              suite.address.String(),
-			gasLimit:        10,
-			gasFeeCap:       big.NewInt(5),
-			cost:            &hundredInt,
-			from:            suite.address.String(),
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      false,
-			enableFeemarket: true,
-		},
-	}
-
-	vmdb := suite.StateDB()
-	vmdb.AddBalance(suite.address, hundredInt.BigInt())
-	balance := vmdb.GetBalance(suite.address)
-	suite.Require().Equal(balance, hundredInt.BigInt())
-	vmdb.Commit()
-
-	for i, tc := range testCases {
-		suite.Run(tc.name, func() {
-			to := common.HexToAddress(tc.from)
-
-			var amount, gasPrice, gasFeeCap, gasTipCap *big.Int
-			if tc.cost != nil {
-				amount = tc.cost.BigInt()
-			}
-
-			if tc.enableFeemarket {
-				gasFeeCap = tc.gasFeeCap
-				if tc.gasTipCap == nil {
-					gasTipCap = oneInt.BigInt()
-				} else {
-					gasTipCap = tc.gasTipCap
-				}
-			} else {
-				if tc.gasPrice != nil {
-					gasPrice = tc.gasPrice.BigInt()
-				}
-			}
-
-			tx := evmtypes.NewTx(zeroInt.BigInt(), 1, &to, amount, tc.gasLimit, gasPrice, gasFeeCap, gasTipCap, nil, tc.accessList)
-			tx.From = tc.from
-
-			txData, _ := evmtypes.UnpackTxData(tx.Data)
-
-			acct := suite.app.EvmKeeper.GetAccountOrEmpty(suite.ctx, suite.address)
-			err := evmkeeper.CheckSenderBalance(
-				sdkmath.NewIntFromBigInt(acct.Balance),
-				txData,
-			)
-
-			if tc.expectPass {
-				suite.Require().NoError(err, "valid test %d failed", i)
-			} else {
-				suite.Require().Error(err, "invalid test %d passed", i)
-			}
-		})
-	}
+func (suite *KeeperTestSuite) EvmDenom() string {
+	ctx := sdk.WrapSDKContext(suite.ctx)
+	rsp, _ := suite.queryClient.Params(ctx, &evmtypes.QueryParamsRequest{})
+	return rsp.Params.EvmDenom
 }
 
-func (suite *KeeperTestSuite) TestDeductTxCostsFromUserBalance() {
-	hundredInt := sdkmath.NewInt(100)
-	zeroInt := sdk.ZeroInt()
-	oneInt := sdkmath.NewInt(1)
-	fiveInt := sdkmath.NewInt(5)
-	fiftyInt := sdkmath.NewInt(50)
+// Commit and begin new block
+func (suite *KeeperTestSuite) Commit() {
+	var err error
+	suite.ctx, err = testutil.Commit(suite.ctx, suite.app, 0*time.Second, nil)
+	suite.Require().NoError(err)
 
-	// should be enough to cover all test cases
-	initBalance := sdkmath.NewInt((ethparams.InitialBaseFee + 10) * 105)
+	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
+	evmtypes.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
+	suite.queryClient = evmtypes.NewQueryClient(queryHelper)
+}
 
-	testCases := []struct {
-		name            string
-		gasLimit        uint64
-		gasPrice        *sdkmath.Int
-		gasFeeCap       *big.Int
-		gasTipCap       *big.Int
-		cost            *sdkmath.Int
-		accessList      *ethtypes.AccessList
-		expectPass      bool
-		enableFeemarket bool
-		from            string
-		malleate        func()
-	}{
-		{
-			name:       "Enough balance",
-			gasLimit:   10,
-			gasPrice:   &oneInt,
-			cost:       &oneInt,
-			accessList: &ethtypes.AccessList{},
-			expectPass: true,
-			from:       suite.address.String(),
-		},
-		{
-			name:       "Equal balance",
-			gasLimit:   100,
-			gasPrice:   &oneInt,
-			cost:       &oneInt,
-			accessList: &ethtypes.AccessList{},
-			expectPass: true,
-			from:       suite.address.String(),
-		},
-		{
-			name:       "Higher gas limit, not enough balance",
-			gasLimit:   105,
-			gasPrice:   &oneInt,
-			cost:       &oneInt,
-			accessList: &ethtypes.AccessList{},
-			expectPass: false,
-			from:       suite.address.String(),
-		},
-		{
-			name:       "Higher gas price, enough balance",
-			gasLimit:   20,
-			gasPrice:   &fiveInt,
-			cost:       &oneInt,
-			accessList: &ethtypes.AccessList{},
-			expectPass: true,
-			from:       suite.address.String(),
-		},
-		{
-			name:       "Higher gas price, not enough balance",
-			gasLimit:   20,
-			gasPrice:   &fiftyInt,
-			cost:       &oneInt,
-			accessList: &ethtypes.AccessList{},
-			expectPass: false,
-			from:       suite.address.String(),
-		},
-		// This case is expected to be true because the fees can be deducted, but the tx
-		// execution is going to fail because there is no more balance to pay the cost
-		{
-			name:       "Higher cost, enough balance",
-			gasLimit:   100,
-			gasPrice:   &oneInt,
-			cost:       &fiftyInt,
-			accessList: &ethtypes.AccessList{},
-			expectPass: true,
-			from:       suite.address.String(),
-		},
-		//  testcases with enableFeemarket enabled.
-		{
-			name:            "Invalid gasFeeCap w/ enableFeemarket",
-			gasLimit:        10,
-			gasFeeCap:       big.NewInt(1),
-			gasTipCap:       big.NewInt(1),
-			cost:            &oneInt,
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      false,
-			enableFeemarket: true,
-			from:            suite.address.String(),
-		},
-		{
-			name:            "empty tip fee is valid to deduct",
-			gasLimit:        10,
-			gasFeeCap:       big.NewInt(ethparams.InitialBaseFee),
-			gasTipCap:       big.NewInt(1),
-			cost:            &oneInt,
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      true,
-			enableFeemarket: true,
-			from:            suite.address.String(),
-		},
-		{
-			name:            "effectiveTip equal to gasTipCap",
-			gasLimit:        100,
-			gasFeeCap:       big.NewInt(ethparams.InitialBaseFee + 2),
-			cost:            &oneInt,
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      true,
-			enableFeemarket: true,
-			from:            suite.address.String(),
-		},
-		{
-			name:            "effectiveTip equal to (gasFeeCap - baseFee)",
-			gasLimit:        105,
-			gasFeeCap:       big.NewInt(ethparams.InitialBaseFee + 1),
-			gasTipCap:       big.NewInt(2),
-			cost:            &oneInt,
-			accessList:      &ethtypes.AccessList{},
-			expectPass:      true,
-			enableFeemarket: true,
-			from:            suite.address.String(),
-		},
-		{
-			name:       "Invalid from address",
-			gasLimit:   10,
-			gasPrice:   &oneInt,
-			cost:       &oneInt,
-			accessList: &ethtypes.AccessList{},
-			expectPass: false,
-			from:       "",
-		},
-		{
-			name:     "Enough balance - with access list",
-			gasLimit: 10,
-			gasPrice: &oneInt,
-			cost:     &oneInt,
-			accessList: &ethtypes.AccessList{
-				ethtypes.AccessTuple{
-					Address:     suite.address,
-					StorageKeys: []common.Hash{},
-				},
-			},
-			expectPass: true,
-			from:       suite.address.String(),
-		},
-		{
-			name:       "gasLimit < intrinsicGas during IsCheckTx",
-			gasLimit:   1,
-			gasPrice:   &oneInt,
-			cost:       &oneInt,
-			accessList: &ethtypes.AccessList{},
-			expectPass: false,
-			from:       suite.address.String(),
-			malleate: func() {
-				suite.ctx = suite.ctx.WithIsCheckTx(true)
-			},
-		},
+func (suite *KeeperTestSuite) StateDB() *statedb.StateDB {
+	return statedb.New(suite.ctx, suite.app.EvmKeeper, statedb.NewEmptyTxConfig(common.BytesToHash(suite.ctx.HeaderHash().Bytes())))
+}
+
+// DeployTestContract deploy a test erc20 contract and returns the contract address
+func (suite *KeeperTestSuite) DeployTestContract(t require.TestingT, owner common.Address, supply *big.Int) common.Address {
+	ctx := sdk.WrapSDKContext(suite.ctx)
+	chainID := suite.app.EvmKeeper.ChainID()
+
+	ctorArgs, err := evmtypes.ERC20Contract.ABI.Pack("", owner, supply)
+	require.NoError(t, err)
+
+	nonce := suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address)
+
+	data := evmtypes.ERC20Contract.Bin
+	data = append(data, ctorArgs...)
+	args, err := json.Marshal(&evmtypes.TransactionArgs{
+		From: &suite.address,
+		Data: (*hexutil.Bytes)(&data),
+	})
+	require.NoError(t, err)
+	res, err := suite.queryClient.EstimateGas(ctx, &evmtypes.EthCallRequest{
+		Args:            args,
+		GasCap:          config.DefaultGasCap,
+		ProposerAddress: suite.ctx.BlockHeader().ProposerAddress,
+	})
+	require.NoError(t, err)
+
+	var erc20DeployTx *evmtypes.MsgEthereumTx
+	if suite.enableFeemarket {
+		ethTxParams := &evmtypes.EvmTxArgs{
+			ChainID:   chainID,
+			Nonce:     nonce,
+			GasLimit:  res.Gas,
+			GasFeeCap: suite.app.FeeMarketKeeper.GetBaseFee(suite.ctx),
+			GasTipCap: big.NewInt(1),
+			Input:     data,
+			Accesses:  &ethtypes.AccessList{},
+		}
+		erc20DeployTx = evmtypes.NewTx(ethTxParams)
+	} else {
+		ethTxParams := &evmtypes.EvmTxArgs{
+			ChainID:  chainID,
+			Nonce:    nonce,
+			GasLimit: res.Gas,
+			Input:    data,
+		}
+		erc20DeployTx = evmtypes.NewTx(ethTxParams)
 	}
 
-	for i, tc := range testCases {
-		suite.Run(tc.name, func() {
-			suite.enableFeemarket = tc.enableFeemarket
-			suite.SetupTest()
-			vmdb := suite.StateDB()
+	erc20DeployTx.From = suite.address.Hex()
+	err = erc20DeployTx.Sign(ethtypes.LatestSignerForChainID(chainID), suite.signer)
+	require.NoError(t, err)
+	rsp, err := suite.app.EvmKeeper.EthereumTx(ctx, erc20DeployTx)
+	require.NoError(t, err)
+	require.Empty(t, rsp.VmError)
+	return crypto.CreateAddress(suite.address, nonce)
+}
 
-			if tc.malleate != nil {
-				tc.malleate()
-			}
-			var amount, gasPrice, gasFeeCap, gasTipCap *big.Int
-			if tc.cost != nil {
-				amount = tc.cost.BigInt()
-			}
+func (suite *KeeperTestSuite) TransferERC20Token(t require.TestingT, contractAddr, from, to common.Address, amount *big.Int) *evmtypes.MsgEthereumTx {
+	ctx := sdk.WrapSDKContext(suite.ctx)
+	chainID := suite.app.EvmKeeper.ChainID()
 
-			if suite.enableFeemarket {
-				if tc.gasFeeCap != nil {
-					gasFeeCap = tc.gasFeeCap
-				}
-				if tc.gasTipCap == nil {
-					gasTipCap = oneInt.BigInt()
-				} else {
-					gasTipCap = tc.gasTipCap
-				}
-				vmdb.AddBalance(suite.address, initBalance.BigInt())
-				balance := vmdb.GetBalance(suite.address)
-				suite.Require().Equal(balance, initBalance.BigInt())
-			} else {
-				if tc.gasPrice != nil {
-					gasPrice = tc.gasPrice.BigInt()
-				}
+	transferData, err := evmtypes.ERC20Contract.ABI.Pack("transfer", to, amount)
+	require.NoError(t, err)
+	args, err := json.Marshal(&evmtypes.TransactionArgs{To: &contractAddr, From: &from, Data: (*hexutil.Bytes)(&transferData)})
+	require.NoError(t, err)
+	res, err := suite.queryClient.EstimateGas(ctx, &evmtypes.EthCallRequest{
+		Args:            args,
+		GasCap:          25_000_000,
+		ProposerAddress: suite.ctx.BlockHeader().ProposerAddress,
+	})
+	require.NoError(t, err)
 
-				vmdb.AddBalance(suite.address, hundredInt.BigInt())
-				balance := vmdb.GetBalance(suite.address)
-				suite.Require().Equal(balance, hundredInt.BigInt())
-			}
-			vmdb.Commit()
+	nonce := suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address)
 
-			tx := evmtypes.NewTx(zeroInt.BigInt(), 1, &suite.address, amount, tc.gasLimit, gasPrice, gasFeeCap, gasTipCap, nil, tc.accessList)
-			tx.From = tc.from
-
-			txData, _ := evmtypes.UnpackTxData(tx.Data)
-
-			fees, priority, err := suite.app.EvmKeeper.DeductTxCostsFromUserBalance(
-				suite.ctx,
-				*tx,
-				txData,
-				evmtypes.DefaultEVMDenom,
-				false,
-				false,
-				suite.enableFeemarket, // london
-			)
-
-			if tc.expectPass {
-				suite.Require().NoError(err, "valid test %d failed", i)
-				if tc.enableFeemarket {
-					baseFee := suite.app.FeeMarketKeeper.GetBaseFee(suite.ctx)
-					suite.Require().Equal(
-						fees,
-						sdk.NewCoins(
-							sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewIntFromBigInt(txData.EffectiveFee(baseFee))),
-						),
-						"valid test %d failed, fee value is wrong ", i,
-					)
-					suite.Require().Equal(int64(0), priority)
-				} else {
-					suite.Require().Equal(
-						fees,
-						sdk.NewCoins(
-							sdk.NewCoin(evmtypes.DefaultEVMDenom, tc.gasPrice.Mul(sdkmath.NewIntFromUint64(tc.gasLimit))),
-						),
-						"valid test %d failed, fee value is wrong ", i,
-					)
-				}
-			} else {
-				suite.Require().Error(err, "invalid test %d passed", i)
-				suite.Require().Nil(fees, "invalid test %d passed. fees value must be nil", i)
-			}
-		})
+	var ercTransferTx *evmtypes.MsgEthereumTx
+	if suite.enableFeemarket {
+		ethTxParams := &evmtypes.EvmTxArgs{
+			ChainID:   chainID,
+			Nonce:     nonce,
+			To:        &contractAddr,
+			GasLimit:  res.Gas,
+			GasFeeCap: suite.app.FeeMarketKeeper.GetBaseFee(suite.ctx),
+			GasTipCap: big.NewInt(1),
+			Input:     transferData,
+			Accesses:  &ethtypes.AccessList{},
+		}
+		ercTransferTx = evmtypes.NewTx(ethTxParams)
+	} else {
+		ethTxParams := &evmtypes.EvmTxArgs{
+			ChainID:  chainID,
+			Nonce:    nonce,
+			To:       &contractAddr,
+			GasLimit: res.Gas,
+			Input:    transferData,
+		}
+		ercTransferTx = evmtypes.NewTx(ethTxParams)
 	}
-	suite.enableFeemarket = false // reset flag
+
+	ercTransferTx.From = suite.address.Hex()
+	err = ercTransferTx.Sign(ethtypes.LatestSignerForChainID(chainID), suite.signer)
+	require.NoError(t, err)
+	rsp, err := suite.app.EvmKeeper.EthereumTx(ctx, ercTransferTx)
+	require.NoError(t, err)
+	require.Empty(t, rsp.VmError)
+	return ercTransferTx
+}
+
+// DeployTestMessageCall deploy a test erc20 contract and returns the contract address
+func (suite *KeeperTestSuite) DeployTestMessageCall(t require.TestingT) common.Address {
+	ctx := sdk.WrapSDKContext(suite.ctx)
+	chainID := suite.app.EvmKeeper.ChainID()
+
+	data := evmtypes.TestMessageCall.Bin
+	args, err := json.Marshal(&evmtypes.TransactionArgs{
+		From: &suite.address,
+		Data: (*hexutil.Bytes)(&data),
+	})
+	require.NoError(t, err)
+
+	res, err := suite.queryClient.EstimateGas(ctx, &evmtypes.EthCallRequest{
+		Args:            args,
+		GasCap:          config.DefaultGasCap,
+		ProposerAddress: suite.ctx.BlockHeader().ProposerAddress,
+	})
+	require.NoError(t, err)
+
+	nonce := suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address)
+
+	var erc20DeployTx *evmtypes.MsgEthereumTx
+	if suite.enableFeemarket {
+		ethTxParams := &evmtypes.EvmTxArgs{
+			ChainID:   chainID,
+			Nonce:     nonce,
+			GasLimit:  res.Gas,
+			Input:     data,
+			GasFeeCap: suite.app.FeeMarketKeeper.GetBaseFee(suite.ctx),
+			Accesses:  &ethtypes.AccessList{},
+			GasTipCap: big.NewInt(1),
+		}
+		erc20DeployTx = evmtypes.NewTx(ethTxParams)
+	} else {
+		ethTxParams := &evmtypes.EvmTxArgs{
+			ChainID:  chainID,
+			Nonce:    nonce,
+			GasLimit: res.Gas,
+			Input:    data,
+		}
+		erc20DeployTx = evmtypes.NewTx(ethTxParams)
+	}
+
+	erc20DeployTx.From = suite.address.Hex()
+	err = erc20DeployTx.Sign(ethtypes.LatestSignerForChainID(chainID), suite.signer)
+	require.NoError(t, err)
+	rsp, err := suite.app.EvmKeeper.EthereumTx(ctx, erc20DeployTx)
+	require.NoError(t, err)
+	require.Empty(t, rsp.VmError)
+	return crypto.CreateAddress(suite.address, nonce)
 }

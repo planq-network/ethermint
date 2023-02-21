@@ -26,13 +26,16 @@ import (
 	"github.com/evmos/ethermint/indexer"
 	"github.com/evmos/ethermint/rpc/backend/mocks"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
+	utiltx "github.com/evmos/ethermint/testutil/tx"
 	"github.com/evmos/ethermint/tests"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
 type BackendTestSuite struct {
 	suite.Suite
+
 	backend *Backend
+	from    common.Address
 	acc     sdk.AccAddress
 	signer  keyring.Signer
 }
@@ -41,13 +44,15 @@ func TestBackendTestSuite(t *testing.T) {
 	suite.Run(t, new(BackendTestSuite))
 }
 
+const ChainID = utils.TestnetChainID + "-1"
+
 // SetupTest is executed before every BackendTestSuite test
 func (suite *BackendTestSuite) SetupTest() {
 	ctx := server.NewDefaultContext()
 	ctx.Viper.Set("telemetry.global-labels", []interface{}{})
 
 	baseDir := suite.T().TempDir()
-	nodeDirName := fmt.Sprintf("node")
+	nodeDirName := "node"
 	clientDir := filepath.Join(baseDir, nodeDirName, "evmoscli")
 	keyRing, err := suite.generateTestKeyring(clientDir)
 	if err != nil {
@@ -55,7 +60,7 @@ func (suite *BackendTestSuite) SetupTest() {
 	}
 
 	// Create Account with set sequence
-	suite.acc = sdk.AccAddress(tests.GenerateAddress().Bytes())
+	suite.acc = sdk.AccAddress(utiltx.GenerateAddress().Bytes())
 	accounts := map[string]client.TestAccount{}
 	accounts[suite.acc.String()] = client.TestAccount{
 		Address: suite.acc,
@@ -63,12 +68,13 @@ func (suite *BackendTestSuite) SetupTest() {
 		Seq:     uint64(1),
 	}
 
-	priv, err := ethsecp256k1.GenerateKey()
-	suite.signer = tests.NewSigner(priv)
+	from, priv := utiltx.NewAddrKey()
+	suite.from = from
+	suite.signer = utiltx.NewSigner(priv)
 	suite.Require().NoError(err)
 
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
-	clientCtx := client.Context{}.WithChainID("ethermint_9000-1").
+	clientCtx := client.Context{}.WithChainID(ChainID).
 		WithHeight(1).
 		WithTxConfig(encodingConfig.TxConfig).
 		WithKeyringDir(clientDir).
@@ -87,26 +93,22 @@ func (suite *BackendTestSuite) SetupTest() {
 	// Add codec
 	encCfg := encoding.MakeConfig(app.ModuleBasics)
 	suite.backend.clientCtx.Codec = encCfg.Codec
-
 }
 
 // buildEthereumTx returns an example legacy Ethereum transaction
 func (suite *BackendTestSuite) buildEthereumTx() (*evmtypes.MsgEthereumTx, []byte) {
-	msgEthereumTx := evmtypes.NewTx(
-		big.NewInt(1),
-		uint64(0),
-		&common.Address{},
-		big.NewInt(0),
-		100000,
-		big.NewInt(1),
-		nil,
-		nil,
-		nil,
-		nil,
-	)
+	ethTxParams := evmtypes.EvmTxArgs{
+		ChainID:  suite.backend.chainID,
+		Nonce:    uint64(0),
+		To:       &common.Address{},
+		Amount:   big.NewInt(0),
+		GasLimit: 100000,
+		GasPrice: big.NewInt(1),
+	}
+	msgEthereumTx := evmtypes.NewTx(&ethTxParams)
 
 	// A valid msg should have empty `From`
-	msgEthereumTx.From = ""
+	msgEthereumTx.From = suite.from.Hex()
 
 	txBuilder := suite.backend.clientCtx.TxConfig.NewTxBuilder()
 	err := txBuilder.SetMsgs(msgEthereumTx)
@@ -143,6 +145,7 @@ func (suite *BackendTestSuite) buildFormattedBlock(
 				uint64(header.Height),
 				uint64(0),
 				baseFee,
+				suite.backend.chainID,
 			)
 			suite.Require().NoError(err)
 			ethRPCTxs = []interface{}{rpcTx}
@@ -170,8 +173,8 @@ func (suite *BackendTestSuite) generateTestKeyring(clientDir string) (keyring.Ke
 }
 
 func (suite *BackendTestSuite) signAndEncodeEthTx(msgEthereumTx *evmtypes.MsgEthereumTx) []byte {
-	from, priv := tests.NewAddrKey()
-	signer := tests.NewSigner(priv)
+	from, priv := utiltx.NewAddrKey()
+	signer := utiltx.NewSigner(priv)
 
 	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
 	RegisterParamsWithoutHeader(queryClient, 1)
@@ -181,7 +184,7 @@ func (suite *BackendTestSuite) signAndEncodeEthTx(msgEthereumTx *evmtypes.MsgEth
 	err := msgEthereumTx.Sign(ethSigner, signer)
 	suite.Require().NoError(err)
 
-	tx, err := msgEthereumTx.BuildTx(suite.backend.clientCtx.TxConfig.NewTxBuilder(), "aphoton")
+	tx, err := msgEthereumTx.BuildTx(suite.backend.clientCtx.TxConfig.NewTxBuilder(), utils.BaseDenom)
 	suite.Require().NoError(err)
 
 	txEncoder := suite.backend.clientCtx.TxConfig.TxEncoder()

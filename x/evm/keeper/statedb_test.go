@@ -17,7 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/evmos/ethermint/crypto/ethsecp256k1"
-	"github.com/evmos/ethermint/tests"
+	utiltx "github.com/evmos/ethermint/testutil/tx"
 	"github.com/evmos/ethermint/x/evm/statedb"
 	"github.com/evmos/ethermint/x/evm/types"
 )
@@ -42,7 +42,7 @@ func (suite *KeeperTestSuite) TestCreateAccount() {
 		},
 		{
 			"create account",
-			tests.GenerateAddress(),
+			utiltx.GenerateAddress(),
 			func(vmdb vm.StateDB, addr common.Address) {
 				suite.Require().False(vmdb.Exist(addr))
 			},
@@ -163,7 +163,7 @@ func (suite *KeeperTestSuite) TestGetNonce() {
 	}{
 		{
 			"account not found",
-			tests.GenerateAddress(),
+			utiltx.GenerateAddress(),
 			0,
 			func(vm.StateDB) {},
 		},
@@ -197,7 +197,7 @@ func (suite *KeeperTestSuite) TestSetNonce() {
 	}{
 		{
 			"new account",
-			tests.GenerateAddress(),
+			utiltx.GenerateAddress(),
 			10,
 			func() {},
 		},
@@ -220,7 +220,7 @@ func (suite *KeeperTestSuite) TestSetNonce() {
 }
 
 func (suite *KeeperTestSuite) TestGetCodeHash() {
-	addr := tests.GenerateAddress()
+	addr := utiltx.GenerateAddress()
 	baseAcc := &authtypes.BaseAccount{Address: sdk.AccAddress(addr.Bytes()).String()}
 	suite.app.AccountKeeper.SetAccount(suite.ctx, baseAcc)
 
@@ -232,7 +232,7 @@ func (suite *KeeperTestSuite) TestGetCodeHash() {
 	}{
 		{
 			"account not found",
-			tests.GenerateAddress(),
+			utiltx.GenerateAddress(),
 			common.Hash{},
 			func(vm.StateDB) {},
 		},
@@ -264,7 +264,7 @@ func (suite *KeeperTestSuite) TestGetCodeHash() {
 }
 
 func (suite *KeeperTestSuite) TestSetCode() {
-	addr := tests.GenerateAddress()
+	addr := utiltx.GenerateAddress()
 	baseAcc := &authtypes.BaseAccount{Address: sdk.AccAddress(addr.Bytes()).String()}
 	suite.app.AccountKeeper.SetAccount(suite.ctx, baseAcc)
 
@@ -276,7 +276,7 @@ func (suite *KeeperTestSuite) TestSetCode() {
 	}{
 		{
 			"account not found",
-			tests.GenerateAddress(),
+			utiltx.GenerateAddress(),
 			[]byte("code"),
 			false,
 		},
@@ -319,7 +319,7 @@ func (suite *KeeperTestSuite) TestSetCode() {
 }
 
 func (suite *KeeperTestSuite) TestKeeperSetCode() {
-	addr := tests.GenerateAddress()
+	addr := utiltx.GenerateAddress()
 	baseAcc := &authtypes.BaseAccount{Address: sdk.AccAddress(addr.Bytes()).String()}
 	suite.app.AccountKeeper.SetAccount(suite.ctx, baseAcc)
 
@@ -425,7 +425,8 @@ func (suite *KeeperTestSuite) TestCommittedState() {
 
 	vmdb := suite.StateDB()
 	vmdb.SetState(suite.address, key, value1)
-	vmdb.Commit()
+	err := vmdb.Commit()
+	suite.Require().NoError(err)
 
 	vmdb = suite.StateDB()
 	vmdb.SetState(suite.address, key, value2)
@@ -433,7 +434,8 @@ func (suite *KeeperTestSuite) TestCommittedState() {
 	suite.Require().Equal(value2, tmp)
 	tmp = vmdb.GetCommittedState(suite.address, key)
 	suite.Require().Equal(value1, tmp)
-	vmdb.Commit()
+	err = vmdb.Commit()
+	suite.Require().NoError(err)
 
 	vmdb = suite.StateDB()
 	tmp = vmdb.GetCommittedState(suite.address, key)
@@ -506,7 +508,7 @@ func (suite *KeeperTestSuite) TestExist() {
 		{"success, has suicided", suite.address, func(vmdb vm.StateDB) {
 			vmdb.Suicide(suite.address)
 		}, true},
-		{"success, account doesn't exist", tests.GenerateAddress(), func(vm.StateDB) {}, false},
+		{"success, account doesn't exist", utiltx.GenerateAddress(), func(vm.StateDB) {}, false},
 	}
 
 	for _, tc := range testCases {
@@ -533,7 +535,7 @@ func (suite *KeeperTestSuite) TestEmpty() {
 			func(vmdb vm.StateDB) { vmdb.AddBalance(suite.address, big.NewInt(100)) },
 			false,
 		},
-		{"empty, account doesn't exist", tests.GenerateAddress(), func(vm.StateDB) {}, true},
+		{"empty, account doesn't exist", utiltx.GenerateAddress(), func(vm.StateDB) {}, true},
 	}
 
 	for _, tc := range testCases {
@@ -614,7 +616,7 @@ func (suite *KeeperTestSuite) CreateTestTx(msg *types.MsgEthereumTx, priv crypto
 
 	builder.SetExtensionOptions(option)
 
-	err = msg.Sign(suite.ethSigner, tests.NewSigner(priv))
+	err = msg.Sign(suite.ethSigner, utiltx.NewSigner(priv))
 	suite.Require().NoError(err)
 
 	err = txBuilder.SetMsgs(msg)
@@ -624,32 +626,64 @@ func (suite *KeeperTestSuite) CreateTestTx(msg *types.MsgEthereumTx, priv crypto
 }
 
 func (suite *KeeperTestSuite) TestAddLog() {
-	addr, privKey := tests.NewAddrKey()
-	msg := types.NewTx(big.NewInt(1), 0, &suite.address, big.NewInt(1), 100000, big.NewInt(1), nil, nil, []byte("test"), nil)
+	addr, privKey := utiltx.NewAddrKey()
+	ethTxParams := &types.EvmTxArgs{
+		ChainID:  big.NewInt(1),
+		Nonce:    0,
+		To:       &suite.address,
+		Amount:   big.NewInt(1),
+		GasLimit: 100000,
+		GasPrice: big.NewInt(1),
+		Input:    []byte("test"),
+	}
+	msg := types.NewTx(ethTxParams)
 	msg.From = addr.Hex()
 
 	tx := suite.CreateTestTx(msg, privKey)
 	msg, _ = tx.GetMsgs()[0].(*types.MsgEthereumTx)
 	txHash := msg.AsTransaction().Hash()
 
-	msg2 := types.NewTx(big.NewInt(1), 1, &suite.address, big.NewInt(1), 100000, big.NewInt(1), nil, nil, []byte("test"), nil)
+	ethTx2Params := &types.EvmTxArgs{
+		ChainID:  big.NewInt(1),
+		Nonce:    2,
+		To:       &suite.address,
+		Amount:   big.NewInt(1),
+		GasLimit: 100000,
+		GasPrice: big.NewInt(1),
+		Input:    []byte("test"),
+	}
+	msg2 := types.NewTx(ethTx2Params)
 	msg2.From = addr.Hex()
 
-	tx2 := suite.CreateTestTx(msg2, privKey)
-	msg2, _ = tx2.GetMsgs()[0].(*types.MsgEthereumTx)
-
-	msg3 := types.NewTx(big.NewInt(1), 0, &suite.address, big.NewInt(1), 100000, nil, big.NewInt(1), big.NewInt(1), []byte("test"), nil)
+	ethTx3Params := &types.EvmTxArgs{
+		ChainID:   big.NewInt(1),
+		Nonce:     0,
+		To:        &suite.address,
+		Amount:    big.NewInt(1),
+		GasLimit:  100000,
+		GasFeeCap: big.NewInt(1),
+		GasTipCap: big.NewInt(1),
+		Input:     []byte("test"),
+	}
+	msg3 := types.NewTx(ethTx3Params)
 	msg3.From = addr.Hex()
 
 	tx3 := suite.CreateTestTx(msg3, privKey)
 	msg3, _ = tx3.GetMsgs()[0].(*types.MsgEthereumTx)
 	txHash3 := msg3.AsTransaction().Hash()
 
-	msg4 := types.NewTx(big.NewInt(1), 1, &suite.address, big.NewInt(1), 100000, nil, big.NewInt(1), big.NewInt(1), []byte("test"), nil)
+	ethTx4Params := &types.EvmTxArgs{
+		ChainID:   big.NewInt(1),
+		Nonce:     1,
+		To:        &suite.address,
+		Amount:    big.NewInt(1),
+		GasLimit:  100000,
+		GasFeeCap: big.NewInt(1),
+		GasTipCap: big.NewInt(1),
+		Input:     []byte("test"),
+	}
+	msg4 := types.NewTx(ethTx4Params)
 	msg4.From = addr.Hex()
-
-	tx4 := suite.CreateTestTx(msg4, privKey)
-	msg4, _ = tx4.GetMsgs()[0].(*types.MsgEthereumTx)
 
 	testCases := []struct {
 		name        string
@@ -706,11 +740,11 @@ func (suite *KeeperTestSuite) TestAddLog() {
 }
 
 func (suite *KeeperTestSuite) TestPrepareAccessList() {
-	dest := tests.GenerateAddress()
-	precompiles := []common.Address{tests.GenerateAddress(), tests.GenerateAddress()}
+	dest := utiltx.GenerateAddress()
+	precompiles := []common.Address{utiltx.GenerateAddress(), utiltx.GenerateAddress()}
 	accesses := ethtypes.AccessList{
-		{Address: tests.GenerateAddress(), StorageKeys: []common.Hash{common.BytesToHash([]byte("key"))}},
-		{Address: tests.GenerateAddress(), StorageKeys: []common.Hash{common.BytesToHash([]byte("key1"))}},
+		{Address: utiltx.GenerateAddress(), StorageKeys: []common.Hash{common.BytesToHash([]byte("key"))}},
+		{Address: utiltx.GenerateAddress(), StorageKeys: []common.Hash{common.BytesToHash([]byte("key1"))}},
 	}
 
 	vmdb := suite.StateDB()
@@ -757,7 +791,7 @@ func (suite *KeeperTestSuite) AddSlotToAccessList() {
 		addr common.Address
 		slot common.Hash
 	}{
-		{"new address and slot (1)", tests.GenerateAddress(), common.BytesToHash([]byte("hash"))},
+		{"new address and slot (1)", utiltx.GenerateAddress(), common.BytesToHash([]byte("hash"))},
 		{"new address and slot (2)", suite.address, common.Hash{}},
 		{"existing address and slot", suite.address, common.Hash{}},
 		{"existing address, new slot", suite.address, common.BytesToHash([]byte("hash"))},
@@ -775,74 +809,74 @@ func (suite *KeeperTestSuite) AddSlotToAccessList() {
 }
 
 // FIXME skip for now
-func (suite *KeeperTestSuite) _TestForEachStorage() {
-	var storage types.Storage
-
-	testCase := []struct {
-		name      string
-		malleate  func(vm.StateDB)
-		callback  func(key, value common.Hash) (stop bool)
-		expValues []common.Hash
-	}{
-		{
-			"aggregate state",
-			func(vmdb vm.StateDB) {
-				for i := 0; i < 5; i++ {
-					vmdb.SetState(suite.address, common.BytesToHash([]byte(fmt.Sprintf("key%d", i))), common.BytesToHash([]byte(fmt.Sprintf("value%d", i))))
-				}
-			},
-			func(key, value common.Hash) bool {
-				storage = append(storage, types.NewState(key, value))
-				return true
-			},
-			[]common.Hash{
-				common.BytesToHash([]byte("value0")),
-				common.BytesToHash([]byte("value1")),
-				common.BytesToHash([]byte("value2")),
-				common.BytesToHash([]byte("value3")),
-				common.BytesToHash([]byte("value4")),
-			},
-		},
-		{
-			"filter state",
-			func(vmdb vm.StateDB) {
-				vmdb.SetState(suite.address, common.BytesToHash([]byte("key")), common.BytesToHash([]byte("value")))
-				vmdb.SetState(suite.address, common.BytesToHash([]byte("filterkey")), common.BytesToHash([]byte("filtervalue")))
-			},
-			func(key, value common.Hash) bool {
-				if value == common.BytesToHash([]byte("filtervalue")) {
-					storage = append(storage, types.NewState(key, value))
-					return false
-				}
-				return true
-			},
-			[]common.Hash{
-				common.BytesToHash([]byte("filtervalue")),
-			},
-		},
-	}
-
-	for _, tc := range testCase {
-		suite.Run(tc.name, func() {
-			suite.SetupTest() // reset
-			vmdb := suite.StateDB()
-			tc.malleate(vmdb)
-
-			err := vmdb.ForEachStorage(suite.address, tc.callback)
-			suite.Require().NoError(err)
-			suite.Require().Equal(len(tc.expValues), len(storage), fmt.Sprintf("Expected values:\n%v\nStorage Values\n%v", tc.expValues, storage))
-
-			vals := make([]common.Hash, len(storage))
-			for i := range storage {
-				vals[i] = common.HexToHash(storage[i].Value)
-			}
-
-			// TODO: not sure why Equals fails
-			suite.Require().ElementsMatch(tc.expValues, vals)
-		})
-		storage = types.Storage{}
-	}
-}
+// func (suite *KeeperTestSuite) _TestForEachStorage() {
+// 	var storage types.Storage
+//
+// 	testCase := []struct {
+// 		name      string
+// 		malleate  func(vm.StateDB)
+// 		callback  func(key, value common.Hash) (stop bool)
+// 		expValues []common.Hash
+// 	}{
+// 		{
+// 			"aggregate state",
+// 			func(vmdb vm.StateDB) {
+// 				for i := 0; i < 5; i++ {
+// 					vmdb.SetState(suite.address, common.BytesToHash([]byte(fmt.Sprintf("key%d", i))), common.BytesToHash([]byte(fmt.Sprintf("value%d", i))))
+// 				}
+// 			},
+// 			func(key, value common.Hash) bool {
+// 				storage = append(storage, types.NewState(key, value))
+// 				return true
+// 			},
+// 			[]common.Hash{
+// 				common.BytesToHash([]byte("value0")),
+// 				common.BytesToHash([]byte("value1")),
+// 				common.BytesToHash([]byte("value2")),
+// 				common.BytesToHash([]byte("value3")),
+// 				common.BytesToHash([]byte("value4")),
+// 			},
+// 		},
+// 		{
+// 			"filter state",
+// 			func(vmdb vm.StateDB) {
+// 				vmdb.SetState(suite.address, common.BytesToHash([]byte("key")), common.BytesToHash([]byte("value")))
+// 				vmdb.SetState(suite.address, common.BytesToHash([]byte("filterkey")), common.BytesToHash([]byte("filtervalue")))
+// 			},
+// 			func(key, value common.Hash) bool {
+// 				if value == common.BytesToHash([]byte("filtervalue")) {
+// 					storage = append(storage, types.NewState(key, value))
+// 					return false
+// 				}
+// 				return true
+// 			},
+// 			[]common.Hash{
+// 				common.BytesToHash([]byte("filtervalue")),
+// 			},
+// 		},
+// 	}
+//
+// 	for _, tc := range testCase {
+// 		suite.Run(tc.name, func() {
+// 			suite.SetupTest() // reset
+// 			vmdb := suite.StateDB()
+// 			tc.malleate(vmdb)
+//
+// 			err := vmdb.ForEachStorage(suite.address, tc.callback)
+// 			suite.Require().NoError(err)
+// 			suite.Require().Equal(len(tc.expValues), len(storage), fmt.Sprintf("Expected values:\n%v\nStorage Values\n%v", tc.expValues, storage))
+//
+// 			vals := make([]common.Hash, len(storage))
+// 			for i := range storage {
+// 				vals[i] = common.HexToHash(storage[i].Value)
+// 			}
+//
+// 			// TODO: not sure why Equals fails
+// 			suite.Require().ElementsMatch(tc.expValues, vals)
+// 		})
+// 		storage = types.Storage{}
+// 	}
+// }
 
 func (suite *KeeperTestSuite) TestSetBalance() {
 	amount := big.NewInt(-10)
@@ -897,7 +931,6 @@ func (suite *KeeperTestSuite) TestSetBalance() {
 				suite.Require().NoError(err)
 				suite.Require().Equal(amount, balance)
 			}
-
 		})
 	}
 }
