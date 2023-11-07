@@ -37,10 +37,10 @@ func (mpd MinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		return next(ctx, tx, simulate)
 	}
 
-	evmDenom := mpd.evmKeeper.GetEVMDenom(ctx)
+	evmParams := mpd.evmKeeper.GetParams(ctx)
 	minGasPrices := sdk.DecCoins{
 		{
-			Denom:  evmDenom,
+			Denom:  evmParams.EvmDenom,
 			Amount: minGasPrice,
 		},
 	}
@@ -93,8 +93,8 @@ func (empd EthMinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simul
 		return next(ctx, tx, simulate)
 	}
 
-	chainCfg := empd.evmKeeper.GetChainConfig(ctx)
-	ethCfg := chainCfg.EthereumConfig(empd.evmKeeper.ChainID())
+	paramsEvm := empd.evmKeeper.GetParams(ctx)
+	ethCfg := paramsEvm.ChainConfig.EthereumConfig(empd.evmKeeper.ChainID())
 	baseFee := empd.evmKeeper.GetBaseFee(ctx, ethCfg)
 
 	for _, msg := range tx.GetMsgs() {
