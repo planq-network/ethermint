@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 	tmrpcclient "github.com/tendermint/tendermint/rpc/client"
 	"google.golang.org/grpc/metadata"
+	"math/big"
 )
 
 func (suite *BackendTestSuite) TestRPCMinGasPrice() {
