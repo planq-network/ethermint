@@ -2,11 +2,12 @@ package types
 
 import (
 	"fmt"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 
 	"github.com/gogo/protobuf/proto"
 
-	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -21,23 +22,48 @@ var DefaultPriorityReduction = sdk.DefaultPowerReduction
 
 var EmptyCodeHash = crypto.Keccak256(nil)
 
-// DecodeTxResponse decodes an protobuf-encoded byte slice into TxResponse
+// DecodeTxResponse decodes a protobuf-encoded byte slice into TxResponse
 func DecodeTxResponse(in []byte) (*MsgEthereumTxResponse, error) {
+	responses, err := DecodeTxResponses(in)
+	if err != nil {
+		return nil, err
+	}
+	if len(responses) == 0 {
+		return &MsgEthereumTxResponse{}, nil
+	}
+	return responses[0], nil
+}
+
+// DecodeTxResponses decodes a protobuf-encoded byte slice into TxResponses
+func DecodeTxResponses(in []byte) ([]*MsgEthereumTxResponse, error) {
 	var txMsgData sdk.TxMsgData
 	if err := proto.Unmarshal(in, &txMsgData); err != nil {
 		return nil, err
 	}
 
-	if len(txMsgData.MsgResponses) == 0 {
-		return &MsgEthereumTxResponse{}, nil
+	responses := make([]*MsgEthereumTxResponse, len(txMsgData.MsgResponses))
+	for i, res := range txMsgData.MsgResponses {
+		var response MsgEthereumTxResponse
+		if err := proto.Unmarshal(res.Value, &response); err != nil {
+			return nil, sdkerrors.Wrap(err, "failed to unmarshal tx response message data")
+		}
+		responses[i] = &response
+	}
+	return responses, nil
+}
+
+// DecodeTxLogsFromEvents decodes a protobuf-encoded byte slice into ethereum logs
+func DecodeTxLogsFromEvents(in []byte) ([]*ethtypes.Log, error) {
+	txResponses, err := DecodeTxResponses(in)
+	if err != nil {
+		return nil, err
 	}
 
-	var res MsgEthereumTxResponse
-	if err := proto.Unmarshal(txMsgData.MsgResponses[0].Value, &res); err != nil {
-		return nil, errorsmod.Wrap(err, "failed to unmarshal tx response message data")
+	var txLogs []*Log
+	for _, response := range txResponses {
+		txLogs = append(txLogs, response.Logs...)
 	}
-
-	return &res, nil
+	return LogsToEthereum(txLogs), nil
 }
 
 // EncodeTransactionLogs encodes TransactionLogs slice into a protobuf-encoded byte slice.

@@ -36,7 +36,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 # Changelog
 
-## Unreleased
+## [v0.20.0]
 
 ### State Machine Breaking
 
@@ -78,6 +78,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * (cmd) [\#1417](https://github.com/evmos/ethermint/pull/1417) Apply Google CLI Syntax for required and optional args.
 * (deps) [#1456](https://github.com/evmos/ethermint/pull/1456) Migrate errors-related functionality from "github.com/cosmos/cosmos-sdk/types/errors" (deprecated) to "cosmossdk.io/errors"
 
+
 ### Bug Fixes
 
 * (server) [#1497](https://github.com/evmos/ethermint/pull/1497) Fix telemetry server setup for observability
@@ -95,6 +96,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * (analytics) [#1434](https://github.com/evmos/ethermint/pull/1434) Remove unbound labels from custom tendermint metrics.
 * (rpc) [#1484](https://github.com/evmos/ethermint/pull/1484) Align empty account result for old blocks as ethereum instead of return account not found error.
 * (rpc) [#1503](https://github.com/evmos/ethermint/pull/1503) Fix block hashes returned on JSON-RPC filter `eth_newBlockFilter`.
+* (rpc) [#1685](https://github.com/evmos/ethermint/pull/1685) Fix parse for websocket connID.
+* (rpc) [#1773](https://github.com/evmos/ethermint/pull/1773) Avoid channel get changed when concurrent subscribe happens.
+* (rpc) [#1781](https://github.com/evmos/ethermint/pull/1781) Fix decode log for multi topics in websocket subscribe.
+
+
 
 
 ## [v0.19.3] - 2022-10-14
