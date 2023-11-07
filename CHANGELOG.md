@@ -44,7 +44,6 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * fix(rpc): align block number input behaviour for eth_getProof (#1639)
 * fix(rpc): wrong block number in debug trace related api (#1591)
 * fix(rpc): align fee history (#1611)
-* fix(rpc): align fee history (#1611)
 * fix(rpc): patch gas used api for block less than upgrade height (#1557)
 * fix: align filter rule for debug trace block (#1688)
 * tests(filters): add logs by topic test case (#1515)
