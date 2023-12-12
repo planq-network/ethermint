@@ -1,3 +1,18 @@
+// Copyright 2021 Evmos Foundation
+// This file is part of Evmos' Ethermint library.
+//
+// The Ethermint library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Ethermint library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Ethermint library. If not, see https://github.com/evmos/ethermint/blob/main/LICENSE
 package eth
 
 import (
@@ -338,22 +353,22 @@ func (e *PublicAPI) ChainId() (*hexutil.Big, error) { //nolint
 ///////////////////////////////////////////////////////////////////////////////
 
 // GetUncleByBlockHashAndIndex returns the uncle identified by hash and index. Always returns nil.
-func (e *PublicAPI) GetUncleByBlockHashAndIndex(hash common.Hash, idx hexutil.Uint) map[string]interface{} {
+func (e *PublicAPI) GetUncleByBlockHashAndIndex(_ common.Hash, _ hexutil.Uint) map[string]interface{} {
 	return nil
 }
 
 // GetUncleByBlockNumberAndIndex returns the uncle identified by number and index. Always returns nil.
-func (e *PublicAPI) GetUncleByBlockNumberAndIndex(number, idx hexutil.Uint) map[string]interface{} {
+func (e *PublicAPI) GetUncleByBlockNumberAndIndex(_, _ hexutil.Uint) map[string]interface{} {
 	return nil
 }
 
 // GetUncleCountByBlockHash returns the number of uncles in the block identified by hash. Always zero.
-func (e *PublicAPI) GetUncleCountByBlockHash(hash common.Hash) hexutil.Uint {
+func (e *PublicAPI) GetUncleCountByBlockHash(_ common.Hash) hexutil.Uint {
 	return 0
 }
 
 // GetUncleCountByBlockNumber returns the number of uncles in the block identified by number. Always zero.
-func (e *PublicAPI) GetUncleCountByBlockNumber(blockNum rpctypes.BlockNumber) hexutil.Uint {
+func (e *PublicAPI) GetUncleCountByBlockNumber(_ rpctypes.BlockNumber) hexutil.Uint {
 	return 0
 }
 
@@ -499,6 +514,7 @@ func (e *PublicAPI) GetPendingTransactions() ([]*rpctypes.RPCTransaction, error)
 				uint64(0),
 				uint64(0),
 				nil,
+				e.backend.ChainConfig().ChainID,
 			)
 			if err != nil {
 				return nil, err

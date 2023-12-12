@@ -2,7 +2,6 @@ package backend
 
 import (
 	"bufio"
-
 	"math/big"
 	"os"
 	"path/filepath"
@@ -20,21 +19,19 @@ import (
 	tmrpctypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	"github.com/evmos/ethermint/app"
+	"github.com/evmos/ethermint/crypto/ethsecp256k1"
 	"github.com/evmos/ethermint/crypto/hd"
 	"github.com/evmos/ethermint/encoding"
 	"github.com/evmos/ethermint/indexer"
 	"github.com/evmos/ethermint/rpc/backend/mocks"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
-	utiltx "github.com/evmos/ethermint/testutil/tx"
-	ethermint "github.com/evmos/ethermint/types"
+	"github.com/evmos/ethermint/tests"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
 type BackendTestSuite struct {
 	suite.Suite
-
 	backend *Backend
-	from    common.Address
 	acc     sdk.AccAddress
 	signer  keyring.Signer
 }
@@ -43,7 +40,7 @@ func TestBackendTestSuite(t *testing.T) {
 	suite.Run(t, new(BackendTestSuite))
 }
 
-const ChainID = "ethermint_1234-1"
+const ChainID = "ethermint_9000-1"
 
 // SetupTest is executed before every BackendTestSuite test
 func (suite *BackendTestSuite) SetupTest() {
@@ -59,7 +56,7 @@ func (suite *BackendTestSuite) SetupTest() {
 	}
 
 	// Create Account with set sequence
-	suite.acc = sdk.AccAddress(utiltx.GenerateAddress().Bytes())
+	suite.acc = sdk.AccAddress(tests.GenerateAddress().Bytes())
 	accounts := map[string]client.TestAccount{}
 	accounts[suite.acc.String()] = client.TestAccount{
 		Address: suite.acc,
@@ -67,9 +64,8 @@ func (suite *BackendTestSuite) SetupTest() {
 		Seq:     uint64(1),
 	}
 
-	from, priv := utiltx.NewAddrKey()
-	suite.from = from
-	suite.signer = utiltx.NewSigner(priv)
+	priv, err := ethsecp256k1.GenerateKey()
+	suite.signer = tests.NewSigner(priv)
 	suite.Require().NoError(err)
 
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
@@ -96,18 +92,21 @@ func (suite *BackendTestSuite) SetupTest() {
 
 // buildEthereumTx returns an example legacy Ethereum transaction
 func (suite *BackendTestSuite) buildEthereumTx() (*evmtypes.MsgEthereumTx, []byte) {
-	ethTxParams := evmtypes.EvmTxArgs{
-		ChainID:  suite.backend.chainID,
-		Nonce:    uint64(0),
-		To:       &common.Address{},
-		Amount:   big.NewInt(0),
-		GasLimit: 100000,
-		GasPrice: big.NewInt(1),
-	}
-	msgEthereumTx := evmtypes.NewTx(&ethTxParams)
+	msgEthereumTx := evmtypes.NewTx(
+		suite.backend.chainID,
+		uint64(0),
+		&common.Address{},
+		big.NewInt(0),
+		100000,
+		big.NewInt(1),
+		nil,
+		nil,
+		nil,
+		nil,
+	)
 
 	// A valid msg should have empty `From`
-	msgEthereumTx.From = suite.from.Hex()
+	msgEthereumTx.From = ""
 
 	txBuilder := suite.backend.clientCtx.TxConfig.NewTxBuilder()
 	err := txBuilder.SetMsgs(msgEthereumTx)
@@ -144,6 +143,7 @@ func (suite *BackendTestSuite) buildFormattedBlock(
 				uint64(header.Height),
 				uint64(0),
 				baseFee,
+				suite.backend.chainID,
 			)
 			suite.Require().NoError(err)
 			ethRPCTxs = []interface{}{rpcTx}
@@ -171,8 +171,8 @@ func (suite *BackendTestSuite) generateTestKeyring(clientDir string) (keyring.Ke
 }
 
 func (suite *BackendTestSuite) signAndEncodeEthTx(msgEthereumTx *evmtypes.MsgEthereumTx) []byte {
-	from, priv := utiltx.NewAddrKey()
-	signer := utiltx.NewSigner(priv)
+	from, priv := tests.NewAddrKey()
+	signer := tests.NewSigner(priv)
 
 	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
 	RegisterParamsWithoutHeader(queryClient, 1)
@@ -182,7 +182,7 @@ func (suite *BackendTestSuite) signAndEncodeEthTx(msgEthereumTx *evmtypes.MsgEth
 	err := msgEthereumTx.Sign(ethSigner, signer)
 	suite.Require().NoError(err)
 
-	tx, err := msgEthereumTx.BuildTx(suite.backend.clientCtx.TxConfig.NewTxBuilder(), ethermint.AttoPhoton)
+	tx, err := msgEthereumTx.BuildTx(suite.backend.clientCtx.TxConfig.NewTxBuilder(), "aphoton")
 	suite.Require().NoError(err)
 
 	txEncoder := suite.backend.clientCtx.TxConfig.TxEncoder()

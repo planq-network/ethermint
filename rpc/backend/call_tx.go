@@ -1,3 +1,18 @@
+// Copyright 2021 Evmos Foundation
+// This file is part of Evmos' Ethermint library.
+//
+// The Ethermint library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Ethermint library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Ethermint library. If not, see https://github.com/evmos/ethermint/blob/main/LICENSE
 package backend
 
 import (
@@ -269,6 +284,8 @@ func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.Transac
 			Value:                args.Value,
 			Data:                 input,
 			AccessList:           args.AccessList,
+			ChainID:              args.ChainID,
+			Nonce:                args.Nonce,
 		}
 
 		blockNr := rpctypes.NewBlockNumber(big.NewInt(0))
@@ -309,6 +326,7 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 		Args:            bz,
 		GasCap:          b.RPCGasCap(),
 		ProposerAddress: sdk.ConsAddress(header.Block.ProposerAddress),
+		ChainId:         b.chainID.Int64(),
 	}
 
 	// From ContextWithHeight: if the provided height is 0,
@@ -335,10 +353,12 @@ func (b *Backend) DoCall(
 		// the error message imitates geth behavior
 		return nil, errors.New("header not found")
 	}
+
 	req := evmtypes.EthCallRequest{
 		Args:            bz,
 		GasCap:          b.RPCGasCap(),
 		ProposerAddress: sdk.ConsAddress(header.Block.ProposerAddress),
+		ChainId:         b.chainID.Int64(),
 	}
 
 	// From ContextWithHeight: if the provided height is 0,

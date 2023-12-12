@@ -1,44 +1,27 @@
-// Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// Copyright 2021 Evmos Foundation
+// This file is part of Evmos' Ethermint library.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// The Ethermint library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Ethermint library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Ethermint library. If not, see https://github.com/evmos/ethermint/blob/main/LICENSE
 package types
 
 import (
 	"math"
 	"math/big"
 
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 )
-
-// EvmTxArgs encapsulates all possible params to create all EVM txs types.
-// This includes LegacyTx, DynamicFeeTx and AccessListTx
-type EvmTxArgs struct {
-	Nonce     uint64
-	GasLimit  uint64
-	Input     []byte
-	GasFeeCap *big.Int
-	GasPrice  *big.Int
-	ChainID   *big.Int
-	Amount    *big.Int
-	GasTipCap *big.Int
-	To        *common.Address
-	Accesses  *ethtypes.AccessList
-}
 
 // GetTxPriority returns the priority of a given Ethereum tx. It relies of the
 // priority reduction global variable to calculate the tx priority given the tx

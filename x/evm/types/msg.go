@@ -1,3 +1,18 @@
+// Copyright 2021 Evmos Foundation
+// This file is part of Evmos' Ethermint library.
+//
+// The Ethermint library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Ethermint library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Ethermint library. If not, see https://github.com/evmos/ethermint/blob/main/LICENSE
 package types
 
 import (
@@ -20,6 +35,7 @@ import (
 	"github.com/evmos/ethermint/types"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -28,6 +44,7 @@ var (
 	_ sdk.Msg    = &MsgEthereumTx{}
 	_ sdk.Tx     = &MsgEthereumTx{}
 	_ ante.GasTx = &MsgEthereumTx{}
+	_ sdk.Msg    = &MsgUpdateParams{}
 
 	_ codectypes.UnpackInterfacesMessage = MsgEthereumTx{}
 )
@@ -293,7 +310,42 @@ func (msg MsgEthereumTx) AsTransaction() *ethtypes.Transaction {
 
 // AsMessage creates an Ethereum core.Message from the msg fields
 func (msg MsgEthereumTx) AsMessage(signer ethtypes.Signer, baseFee *big.Int) (core.Message, error) {
-	return msg.AsTransaction().AsMessage(signer, baseFee)
+	txData, err := UnpackTxData(msg.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	gasPrice, gasFeeCap, gasTipCap := txData.GetGasPrice(), txData.GetGasFeeCap(), txData.GetGasTipCap()
+	if baseFee != nil {
+		gasPrice = math.BigMin(gasPrice.Add(gasTipCap, baseFee), gasFeeCap)
+	}
+	var from common.Address
+	if len(msg.From) > 0 {
+		// user can't set arbitrary value in `From` field in transaction,
+		// the SigVerify ante handler will verify the signature and recover
+		// the sender address and populate the `From` field, so the other code can
+		// use it directly when available.
+		from = common.HexToAddress(msg.From)
+	} else {
+		// heavy path
+		from, err = signer.Sender(msg.AsTransaction())
+		if err != nil {
+			return nil, err
+		}
+	}
+	ethMsg := ethtypes.NewMessage(
+		from,
+		txData.GetTo(),
+		txData.GetNonce(),
+		txData.GetValue(),
+		txData.GetGas(),
+		gasPrice, gasFeeCap, gasTipCap,
+		txData.GetData(),
+		txData.GetAccessList(),
+		false,
+	)
+
+	return ethMsg, nil
 }
 
 // GetSender extracts the sender address from the signature values using the latest signer for the given chainID.
@@ -357,4 +409,25 @@ func (msg *MsgEthereumTx) BuildTx(b client.TxBuilder, evmDenom string) (signing.
 	builder.SetGasLimit(msg.GetGas())
 	tx := builder.GetTx()
 	return tx, nil
+}
+
+// GetSigners returns the expected signers for a MsgUpdateParams message.
+func (m MsgUpdateParams) GetSigners() []sdk.AccAddress {
+	//#nosec G703 -- gosec raises a warning about a non-handled error which we deliberately ignore here
+	addr, _ := sdk.AccAddressFromBech32(m.Authority)
+	return []sdk.AccAddress{addr}
+}
+
+// ValidateBasic does a sanity check of the provided data
+func (m *MsgUpdateParams) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(m.Authority); err != nil {
+		return errorsmod.Wrap(err, "invalid authority address")
+	}
+
+	return m.Params.Validate()
+}
+
+// GetSignBytes implements the LegacyMsg interface.
+func (m MsgUpdateParams) GetSignBytes() []byte {
+	return sdk.MustSortJSON(AminoCdc.MustMarshalJSON(&m))
 }

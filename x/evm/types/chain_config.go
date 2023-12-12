@@ -1,3 +1,18 @@
+// Copyright 2021 Evmos Foundation
+// This file is part of Evmos' Ethermint library.
+//
+// The Ethermint library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Ethermint library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Ethermint library. If not, see https://github.com/evmos/ethermint/blob/main/LICENSE
 package types
 
 import (
@@ -35,6 +50,8 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		ArrowGlacierBlock:       getBlockValue(cc.ArrowGlacierBlock),
 		GrayGlacierBlock:        getBlockValue(cc.GrayGlacierBlock),
 		MergeNetsplitBlock:      getBlockValue(cc.MergeNetsplitBlock),
+		ShanghaiBlock:           getBlockValue(cc.ShanghaiBlock),
+		CancunBlock:             getBlockValue(cc.CancunBlock),
 		TerminalTotalDifficulty: nil,
 		Ethash:                  nil,
 		Clique:                  nil,
@@ -58,6 +75,8 @@ func DefaultChainConfig() ChainConfig {
 	arrowGlacierBlock := sdk.ZeroInt()
 	grayGlacierBlock := sdk.ZeroInt()
 	mergeNetsplitBlock := sdk.ZeroInt()
+	shanghaiBlock := sdk.ZeroInt()
+	cancunBlock := sdk.ZeroInt()
 
 	return ChainConfig{
 		HomesteadBlock:      &homesteadBlock,
@@ -77,6 +96,8 @@ func DefaultChainConfig() ChainConfig {
 		ArrowGlacierBlock:   &arrowGlacierBlock,
 		GrayGlacierBlock:    &grayGlacierBlock,
 		MergeNetsplitBlock:  &mergeNetsplitBlock,
+		ShanghaiBlock:       &shanghaiBlock,
+		CancunBlock:         &cancunBlock,
 	}
 }
 
@@ -139,7 +160,12 @@ func (cc ChainConfig) Validate() error {
 	if err := validateBlock(cc.MergeNetsplitBlock); err != nil {
 		return errorsmod.Wrap(err, "MergeNetsplitBlock")
 	}
-
+	if err := validateBlock(cc.ShanghaiBlock); err != nil {
+		return errorsmod.Wrap(err, "ShanghaiBlock")
+	}
+	if err := validateBlock(cc.CancunBlock); err != nil {
+		return errorsmod.Wrap(err, "CancunBlock")
+	}
 	// NOTE: chain ID is not needed to check config order
 	if err := cc.EthereumConfig(nil).CheckConfigForkOrder(); err != nil {
 		return errorsmod.Wrap(err, "invalid config fork order")

@@ -1,3 +1,18 @@
+// Copyright 2021 Evmos Foundation
+// This file is part of Evmos' Ethermint library.
+//
+// The Ethermint library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Ethermint library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Ethermint library. If not, see https://github.com/evmos/ethermint/blob/main/LICENSE
 package backend
 
 import (
@@ -85,6 +100,7 @@ func (b *Backend) TraceTransaction(hash common.Hash, config *evmtypes.TraceConfi
 		BlockTime:       blk.Block.Time,
 		BlockHash:       common.Bytes2Hex(blk.BlockID.Hash),
 		ProposerAddress: sdk.ConsAddress(blk.Block.ProposerAddress),
+		ChainId:         b.chainID.Int64(),
 	}
 
 	if config != nil {
@@ -171,6 +187,7 @@ func (b *Backend) TraceBlock(height rpctypes.BlockNumber,
 		BlockTime:       block.Block.Time,
 		BlockHash:       common.Bytes2Hex(block.BlockID.Hash),
 		ProposerAddress: sdk.ConsAddress(block.Block.ProposerAddress),
+		ChainId:         b.chainID.Int64(),
 	}
 
 	res, err := b.queryClient.TraceBlock(ctxWithHeight, traceBlockRequest)

@@ -2,6 +2,8 @@ package backend
 
 import (
 	"fmt"
+	"math/big"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -12,7 +14,6 @@ import (
 	"github.com/spf13/viper"
 	tmrpcclient "github.com/tendermint/tendermint/rpc/client"
 	"google.golang.org/grpc/metadata"
-	"math/big"
 )
 
 func (suite *BackendTestSuite) TestRPCMinGasPrice() {

@@ -1,3 +1,18 @@
+// Copyright 2021 Evmos Foundation
+// This file is part of Evmos' Ethermint library.
+//
+// The Ethermint library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Ethermint library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Ethermint library. If not, see https://github.com/evmos/ethermint/blob/main/LICENSE
 package backend
 
 import (
@@ -75,6 +90,7 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 		uint64(res.Height),
 		uint64(res.EthTxIndex),
 		baseFee,
+		b.chainID,
 	)
 }
 
@@ -103,6 +119,7 @@ func (b *Backend) getTransactionByHashPending(txHash common.Hash) (*rpctypes.RPC
 				uint64(0),
 				uint64(0),
 				nil,
+				b.chainID,
 			)
 			if err != nil {
 				return nil, err
@@ -224,6 +241,7 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		// sender and receiver (contract or EOA) addreses
 		"from": from,
 		"to":   txData.GetTo(),
+		"type": hexutil.Uint(ethMsg.AsTransaction().Type()),
 	}
 
 	if logs == nil {
@@ -396,5 +414,6 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 		uint64(block.Block.Height),
 		uint64(idx),
 		baseFee,
+		b.chainID,
 	)
 }

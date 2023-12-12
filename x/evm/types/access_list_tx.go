@@ -1,3 +1,18 @@
+// Copyright 2021 Evmos Foundation
+// This file is part of Evmos' Ethermint library.
+//
+// The Ethermint library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Ethermint library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Ethermint library. If not, see https://github.com/evmos/ethermint/blob/main/LICENSE
 package types
 
 import (
@@ -234,16 +249,16 @@ func (tx AccessListTx) Cost() *big.Int {
 }
 
 // EffectiveGasPrice is the same as GasPrice for AccessListTx
-func (tx AccessListTx) EffectiveGasPrice(baseFee *big.Int) *big.Int {
+func (tx AccessListTx) EffectiveGasPrice(_ *big.Int) *big.Int {
 	return tx.GetGasPrice()
 }
 
 // EffectiveFee is the same as Fee for AccessListTx
-func (tx AccessListTx) EffectiveFee(baseFee *big.Int) *big.Int {
+func (tx AccessListTx) EffectiveFee(_ *big.Int) *big.Int {
 	return tx.Fee()
 }
 
 // EffectiveCost is the same as Cost for AccessListTx
-func (tx AccessListTx) EffectiveCost(baseFee *big.Int) *big.Int {
+func (tx AccessListTx) EffectiveCost(_ *big.Int) *big.Int {
 	return tx.Cost()
 }
