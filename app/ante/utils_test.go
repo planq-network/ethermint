@@ -182,19 +182,19 @@ func (s *AnteTestSuite) BuildTestEthTx(
 		s.ctx,
 		common.BytesToAddress(from.Bytes()),
 	)
-
-	msgEthereumTx := evmtypes.NewTx(
-		chainID,
+	txArgs := &evmtypes.EvmTxArgs{
 		nonce,
-		&to,
-		amount,
 		TestGasLimit,
-		gasPrice,
-		gasFeeCap,
-		gasTipCap,
 		input,
+		gasFeeCap,
+		gasPrice,
+		chainID,
+		amount,
+		gasTipCap,
+		&to,
 		accesses,
-	)
+	}
+	msgEthereumTx := evmtypes.NewTx(txArgs)
 	msgEthereumTx.From = from.String()
 	return msgEthereumTx
 }

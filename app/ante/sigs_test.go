@@ -1,7 +1,7 @@
 package ante_test
 
 import (
-	utiltx "github.com/evmos/ethermint/testutil/tx"
+	utiltx "github.com/evmos/ethermint/tests"
 	"math/big"
 
 	"github.com/evmos/ethermint/x/evm/statedb"

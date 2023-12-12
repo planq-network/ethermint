@@ -43,9 +43,6 @@ const (
 	// DefaultJsonRPCMetricsAddress is the default address the JSON-RPC Metrics server binds to.
 	DefaultJSONRPCMetricsAddress = "127.0.0.1:6065"
 
-	// DefaultJsonRPCMetricsAddress is the default address the JSON-RPC Metrics server binds to.
-	DefaultJSONRPCMetricsAddress = "0.0.0.0:6065"
-
 	// DefaultEVMTracer is the default vm.Tracer type
 	DefaultEVMTracer = ""
 

@@ -2,6 +2,7 @@ package types_test
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"strings"
@@ -14,7 +15,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/evmos/ethermint/crypto/ethsecp256k1"
-	"github.com/evmos/ethermint/tests"
+	utiltx "github.com/evmos/ethermint/tests"
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -25,7 +26,7 @@ import (
 	"github.com/evmos/ethermint/x/evm/types"
 )
 
-const invalidFromAddress = "0x0000"
+const invalidAddress = "0x0000"
 
 type MsgsTestSuite struct {
 	suite.Suite

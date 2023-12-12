@@ -411,12 +411,34 @@ func (suite AnteTestSuite) TestEthIncrementSenderSequenceDecorator() {
 	suite.Require().NoError(err)
 
 	to := tests.GenerateAddress()
-	tx := evmtypes.NewTx(suite.app.EvmKeeper.ChainID(), 0, &to, big.NewInt(10), 1000, big.NewInt(1), nil, nil, nil, nil)
+	tx := evmtypes.NewTx(&evmtypes.EvmTxArgs{
+		0,
+		1000,
+		nil,
+		nil,
+		big.NewInt(1),
+		suite.app.EvmKeeper.ChainID(),
+		big.NewInt(10),
+		nil,
+		&to,
+		nil,
+	})
 	tx.From = addr.Hex()
 	err = tx.Sign(suite.ethSigner, tests.NewSigner(privKey))
 	suite.Require().NoError(err)
 
-	tx2 := evmtypes.NewTx(suite.app.EvmKeeper.ChainID(), 1, &to, big.NewInt(10), 1000, big.NewInt(1), nil, nil, nil, nil)
+	tx2 := evmtypes.NewTx(&evmtypes.EvmTxArgs{
+		1,
+		1000,
+		nil,
+		nil,
+		big.NewInt(1),
+		suite.app.EvmKeeper.ChainID(),
+		big.NewInt(10),
+		nil,
+		&to,
+		nil,
+	})
 	tx2.From = addr.Hex()
 	err = tx2.Sign(suite.ethSigner, tests.NewSigner(privKey))
 	suite.Require().NoError(err)
@@ -436,7 +458,20 @@ func (suite AnteTestSuite) TestEthIncrementSenderSequenceDecorator() {
 		},
 		{
 			"no signers",
-			evmtypes.NewTx(suite.app.EvmKeeper.ChainID(), 1, &to, big.NewInt(10), 1000, big.NewInt(1), nil, nil, nil, nil),
+			evmtypes.NewTx(
+				&evmtypes.EvmTxArgs{
+					1,
+					1000,
+					nil,
+					nil,
+					big.NewInt(1),
+					suite.app.EvmKeeper.ChainID(),
+					big.NewInt(10),
+					nil,
+					&to,
+					nil,
+				}),
+
 			func() {},
 			false, false,
 		},

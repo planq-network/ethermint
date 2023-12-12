@@ -625,27 +625,72 @@ func (suite *KeeperTestSuite) CreateTestTx(msg *types.MsgEthereumTx, priv crypto
 
 func (suite *KeeperTestSuite) TestAddLog() {
 	addr, privKey := tests.NewAddrKey()
-	msg := types.NewTx(big.NewInt(1), 0, &suite.address, big.NewInt(1), 100000, big.NewInt(1), nil, nil, []byte("test"), nil)
+	txArgs := &types.EvmTxArgs{
+		0,
+		100000,
+		[]byte("test"),
+		nil,
+		big.NewInt(1),
+		big.NewInt(1),
+		big.NewInt(1),
+		nil,
+		&suite.address,
+		nil,
+	}
+	msg := types.NewTx(txArgs)
 	msg.From = addr.Hex()
 
 	tx := suite.CreateTestTx(msg, privKey)
 	msg, _ = tx.GetMsgs()[0].(*types.MsgEthereumTx)
 	txHash := msg.AsTransaction().Hash()
-
-	msg2 := types.NewTx(big.NewInt(1), 1, &suite.address, big.NewInt(1), 100000, big.NewInt(1), nil, nil, []byte("test"), nil)
+	txArgs2 := &types.EvmTxArgs{
+		1,
+		100000,
+		[]byte("test"),
+		nil,
+		big.NewInt(1),
+		big.NewInt(1),
+		big.NewInt(1),
+		nil,
+		&suite.address,
+		nil,
+	}
+	msg2 := types.NewTx(txArgs2)
 	msg2.From = addr.Hex()
 
 	tx2 := suite.CreateTestTx(msg2, privKey)
 	msg2, _ = tx2.GetMsgs()[0].(*types.MsgEthereumTx)
-
-	msg3 := types.NewTx(big.NewInt(1), 0, &suite.address, big.NewInt(1), 100000, nil, big.NewInt(1), big.NewInt(1), []byte("test"), nil)
+	txArgs3 := &types.EvmTxArgs{
+		0,
+		100000,
+		[]byte("test"),
+		big.NewInt(1),
+		nil,
+		big.NewInt(1),
+		big.NewInt(1),
+		big.NewInt(1),
+		&suite.address,
+		nil,
+	}
+	msg3 := types.NewTx(txArgs3)
 	msg3.From = addr.Hex()
 
 	tx3 := suite.CreateTestTx(msg3, privKey)
 	msg3, _ = tx3.GetMsgs()[0].(*types.MsgEthereumTx)
 	txHash3 := msg3.AsTransaction().Hash()
-
-	msg4 := types.NewTx(big.NewInt(1), 1, &suite.address, big.NewInt(1), 100000, nil, big.NewInt(1), big.NewInt(1), []byte("test"), nil)
+	txArgs4 := &types.EvmTxArgs{
+		1,
+		100000,
+		[]byte("test"),
+		big.NewInt(1),
+		nil,
+		big.NewInt(1),
+		big.NewInt(1),
+		big.NewInt(1),
+		&suite.address,
+		nil,
+	}
+	msg4 := types.NewTx(txArgs4)
 	msg4.From = addr.Hex()
 
 	tx4 := suite.CreateTestTx(msg4, privKey)

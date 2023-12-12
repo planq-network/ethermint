@@ -333,30 +333,33 @@ func (suite *KeeperTestSuite) TransferERC20Token(t require.TestingT, contractAdd
 
 	var ercTransferTx *types.MsgEthereumTx
 	if suite.enableFeemarket {
-		ercTransferTx = types.NewTx(
-			chainID,
+		txArgs := &types.EvmTxArgs{
 			nonce,
-			&contractAddr,
-			nil,
 			res.Gas,
+			transferData,
 			nil,
 			suite.app.FeeMarketKeeper.GetBaseFee(suite.ctx),
-			big.NewInt(1),
-			transferData,
-			&ethtypes.AccessList{}, // accesses
-		)
-	} else {
-		ercTransferTx = types.NewTx(
 			chainID,
+			nil,
+			big.NewInt(1),
+			&contractAddr,
+			&ethtypes.AccessList{}, // accesses
+		}
+		ercTransferTx = types.NewTx(txArgs)
+	} else {
+		txArgs := &types.EvmTxArgs{
 			nonce,
+			res.Gas,
+			transferData,
+			nil,
+			nil,
+			chainID,
+			nil,
+			nil,
 			&contractAddr,
 			nil,
-			res.Gas,
-			nil,
-			nil, nil,
-			transferData,
-			nil,
-		)
+		}
+		ercTransferTx = types.NewTx(txArgs)
 	}
 
 	ercTransferTx.From = suite.address.Hex()

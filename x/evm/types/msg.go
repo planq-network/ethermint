@@ -55,6 +55,32 @@ const (
 	TypeMsgEthereumTx = "ethereum_tx"
 )
 
+// NewTxContract returns a reference to a new Ethereum transaction
+// message designated for contract creation.
+func NewTxContract(
+	chainID *big.Int,
+	nonce uint64,
+	amount *big.Int,
+	gasLimit uint64,
+	gasPrice, gasFeeCap, gasTipCap *big.Int,
+	input []byte,
+	accesses *ethtypes.AccessList,
+) *MsgEthereumTx {
+	txArgs := &EvmTxArgs{
+		nonce,
+		gasLimit,
+		input,
+		gasFeeCap,
+		gasPrice,
+		chainID,
+		amount,
+		gasTipCap,
+		nil,
+		accesses,
+	}
+	return newMsgEthereumTx(txArgs)
+}
+
 // NewTx returns a reference to a new Ethereum transaction message.
 func NewTx(
 	tx *EvmTxArgs,

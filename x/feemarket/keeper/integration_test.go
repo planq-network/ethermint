@@ -541,18 +541,19 @@ func buildEthTx(
 	nonce := getNonce(from.Bytes())
 	data := make([]byte, 0)
 	gasLimit := uint64(100000)
-	msgEthereumTx := evmtypes.NewTx(
-		chainID,
+	args := &evmtypes.EvmTxArgs{
 		nonce,
-		to,
-		nil,
 		gasLimit,
-		gasPrice,
-		gasFeeCap,
-		gasTipCap,
 		data,
+		gasFeeCap,
+		gasPrice,
+		chainID,
+		nil,
+		gasTipCap,
+		to,
 		accesses,
-	)
+	}
+	msgEthereumTx := evmtypes.NewTx(args)
 	msgEthereumTx.From = from.String()
 	return msgEthereumTx
 }

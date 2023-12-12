@@ -34,7 +34,17 @@ func (suite AnteTestSuite) TestEthSigVerificationDecorator() {
 		{"invalid transaction type", &invalidTx{}, false, false, false},
 		{
 			"invalid sender",
-			evmtypes.NewTx(suite.app.EvmKeeper.ChainID(), 1, &addr, big.NewInt(10), 1000, big.NewInt(1), nil, nil, nil, nil),
+			evmtypes.NewTx(&evmtypes.EvmTxArgs{
+				1,
+				1000,
+				nil,
+				big.NewInt(1),
+				big.NewInt(10),
+				suite.app.EvmKeeper.ChainID(),
+				nil,
+				nil,
+				&addr,
+				nil}),
 			true,
 			false,
 			false,
