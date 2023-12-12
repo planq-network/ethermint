@@ -869,18 +869,19 @@ func (suite AnteTestSuite) TestAnteHandler() {
 		{
 			"Fails - Authz Exec with unauthorized message",
 			func() sdk.Tx {
-				ethTx := evmtypes.NewTx(
-					suite.app.EvmKeeper.ChainID(),
+				txArgs := &evmtypes.EvmTxArgs{
 					1,
-					&to,
-					big.NewInt(10),
 					100000,
+					nil,
 					big.NewInt(150),
 					big.NewInt(200),
+					suite.app.EvmKeeper.ChainID(),
+					big.NewInt(10),
 					nil,
+					&to,
 					nil,
-					nil,
-				)
+				}
+				ethTx := evmtypes.NewTx(txArgs)
 				ethTx.From = addr.Hex()
 
 				msg := authz.NewMsgExec(
