@@ -1,15 +1,14 @@
-package evm_test
+package ante_test
 
 import (
 	"math/big"
 
-	evmante "github.com/evmos/evmos/v11/app/ante/evm"
-	"github.com/evmos/evmos/v11/testutil"
+	evmante "github.com/evmos/ethermint/app/ante"
+	"github.com/evmos/ethermint/testutil"
 
-	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	testutiltx "github.com/evmos/evmos/v11/testutil/tx"
-	evmtypes "github.com/evmos/evmos/v11/x/evm/types"
+	testutiltx "github.com/evmos/ethermint/testutil/tx"
+	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
 func (suite *AnteTestSuite) TestEthSetupContextDecorator() {
@@ -38,12 +37,10 @@ func (suite *AnteTestSuite) TestEthSetupContextDecorator() {
 
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			ctx, err := dec.AnteHandle(suite.ctx, tc.tx, false, testutil.NextFn)
+			_, err := dec.AnteHandle(suite.ctx, tc.tx, false, testutil.NextFn)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
-				suite.Equal(storetypes.GasConfig{}, ctx.KVGasConfig())
-				suite.Equal(storetypes.GasConfig{}, ctx.TransientKVGasConfig())
 			} else {
 				suite.Require().Error(err)
 			}

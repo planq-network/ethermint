@@ -16,6 +16,7 @@
 package tx
 
 import (
+	ethermint "github.com/evmos/ethermint/types"
 	"math/big"
 
 	errorsmod "cosmossdk.io/errors"
@@ -28,17 +29,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/evmos/evmos/v11/app"
-	"github.com/evmos/evmos/v11/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v11/utils"
-	evmtypes "github.com/evmos/evmos/v11/x/evm/types"
+	"github.com/evmos/ethermint/app"
+	"github.com/evmos/ethermint/crypto/ethsecp256k1"
+	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
 // PrepareEthTx creates an ethereum tx and signs it with the provided messages and private key.
 // It returns the signed transaction and an error
 func PrepareEthTx(
 	txCfg client.TxConfig,
-	appEvmos *app.Evmos,
+	appEvmos *app.EthermintApp,
 	priv *ethsecp256k1.PrivKey,
 	msgs ...sdk.Msg,
 ) (authsigning.Tx, error) {
@@ -65,7 +65,7 @@ func PrepareEthTx(
 		msg.From = ""
 
 		txGasLimit += msg.GetGas()
-		txFee = txFee.Add(sdk.Coin{Denom: utils.BaseDenom, Amount: sdkmath.NewIntFromBigInt(msg.GetFee())})
+		txFee = txFee.Add(sdk.Coin{Denom: ethermint.AttoPhoton, Amount: sdkmath.NewIntFromBigInt(msg.GetFee())})
 	}
 
 	if err := txBuilder.SetMsgs(msgs...); err != nil {
@@ -99,7 +99,7 @@ func PrepareEthTx(
 // It offers the ability to increment the nonce by a given amount in case one wants to set up
 // multiple transactions that are supposed to be executed one after another.
 // Should this not be the case, just pass in zero.
-func CreateEthTx(ctx sdk.Context, appEvmos *app.Evmos, privKey *ethsecp256k1.PrivKey, from sdk.AccAddress, dest sdk.AccAddress, amount *big.Int, nonceIncrement int) (*evmtypes.MsgEthereumTx, error) {
+func CreateEthTx(ctx sdk.Context, appEvmos *app.EthermintApp, privKey *ethsecp256k1.PrivKey, from sdk.AccAddress, dest sdk.AccAddress, amount *big.Int, nonceIncrement int) (*evmtypes.MsgEthereumTx, error) {
 	toAddr := common.BytesToAddress(dest.Bytes())
 	fromAddr := common.BytesToAddress(from.Bytes())
 	chainID := appEvmos.EvmKeeper.ChainID()

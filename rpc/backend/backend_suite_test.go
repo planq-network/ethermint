@@ -2,8 +2,7 @@ package backend
 
 import (
 	"bufio"
-	"fmt"
-	"github.com/evmos/ethermint/crypto/ethsecp256k1"
+
 	"math/big"
 	"os"
 	"path/filepath"
@@ -27,7 +26,7 @@ import (
 	"github.com/evmos/ethermint/rpc/backend/mocks"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	utiltx "github.com/evmos/ethermint/testutil/tx"
-	"github.com/evmos/ethermint/tests"
+	ethermint "github.com/evmos/ethermint/types"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
@@ -44,7 +43,7 @@ func TestBackendTestSuite(t *testing.T) {
 	suite.Run(t, new(BackendTestSuite))
 }
 
-const ChainID = utils.TestnetChainID + "-1"
+const ChainID = "ethermint_1234-1"
 
 // SetupTest is executed before every BackendTestSuite test
 func (suite *BackendTestSuite) SetupTest() {
@@ -145,7 +144,6 @@ func (suite *BackendTestSuite) buildFormattedBlock(
 				uint64(header.Height),
 				uint64(0),
 				baseFee,
-				suite.backend.chainID,
 			)
 			suite.Require().NoError(err)
 			ethRPCTxs = []interface{}{rpcTx}
@@ -184,7 +182,7 @@ func (suite *BackendTestSuite) signAndEncodeEthTx(msgEthereumTx *evmtypes.MsgEth
 	err := msgEthereumTx.Sign(ethSigner, signer)
 	suite.Require().NoError(err)
 
-	tx, err := msgEthereumTx.BuildTx(suite.backend.clientCtx.TxConfig.NewTxBuilder(), utils.BaseDenom)
+	tx, err := msgEthereumTx.BuildTx(suite.backend.clientCtx.TxConfig.NewTxBuilder(), ethermint.AttoPhoton)
 	suite.Require().NoError(err)
 
 	txEncoder := suite.backend.clientCtx.TxConfig.TxEncoder()
