@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/armon/go-metrics"
 	"strconv"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
