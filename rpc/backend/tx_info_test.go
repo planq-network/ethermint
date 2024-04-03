@@ -299,7 +299,7 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockAndIndex() {
 		1,
 		0,
 		big.NewInt(1),
-        suite.backend.chainID,
+		suite.backend.chainID,
 	)
 	testCases := []struct {
 		name         string
@@ -393,7 +393,7 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockNumberAndIndex() {
 		1,
 		0,
 		big.NewInt(1),
-        suite.backend.chainID,
+		suite.backend.chainID,
 	)
 	testCases := []struct {
 		name         string
@@ -585,8 +585,8 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt() {
 
 			db := dbm.NewMemDB()
 			suite.backend.indexer = indexer.NewKVIndexer(db, tmlog.NewNopLogger(), suite.backend.clientCtx)
-            err := suite.backend.indexer.IndexBlock(tc.block, tc.blockResult)
-            suite.Require().NoError(err)
+			err := suite.backend.indexer.IndexBlock(tc.block, tc.blockResult)
+			suite.Require().NoError(err)
 
 			txReceipt, err := suite.backend.GetTransactionReceipt(common.HexToHash(tc.tx.Hash))
 			if tc.expPass {
